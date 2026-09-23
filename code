@@ -1,0 +1,346 @@
+#include <iostream>
+#include <string>
+#define MAX_DISH 20
+#define MAX_USER 500
+#define MAX_ORDER 1000
+using namespace std;
+struct Dish {
+    int id;
+    string name;
+    double price;
+    int stock;
+};
+struct User {
+    string id;
+    string name;
+    string pwd;
+    int grade;
+    string major;
+    string birth;
+    string number;
+    int money;
+};
+struct manager {
+    string id;
+    string name;
+    string pwd;
+};
+struct BuyItem {
+    int dishId;
+    int num;
+};
+struct Order {
+    string orderId;
+    string userId;
+    BuyItem list[10];
+    int itemCnt;
+    double total;
+    int status;
+};
+
+manager managerList[MAX_USER];int managerNum = 0;Dish dishList[MAX_DISH];int dishNum = 0;
+User userList[MAX_USER];int userNum = 0;
+Order orderList[MAX_ORDER];int orderNum = 0;
+
+int loginUser = -1;
+
+void initData();        int login();            void showMenu();        void studentRecharge(); void studentOrder();    void staffPick();       void showTotal();      void addUser();        void addDish();       
+
+
+void initData() {
+
+    dishList[dishNum++] = { 1, "红烧肉饭", 15, 50 };
+    dishList[dishNum++] = { 2, "黄焖鸡", 16, 30 };
+    dishList[dishNum++] = { 3, "麻辣香锅", 25, 20 };
+
+    
+    userList[userNum++] = { "stu001", "小明", "123", 7, "计算机", "2000-01-01", "12345678901",100 };
+    userList[userNum++] = { "sta001", "打饭阿姨", "123"};
+    userList[userNum++] = { "man001", "管理员", "123"};
+}
+
+int login() {
+    string id, pwd;
+    cout << "\n===登录===\n";
+    cout << "账号："; cin >> id;
+    cout << "密码："; cin >> pwd;
+
+    for (int i = 0; i < userNum; i++) {
+        if (userList[i].id == id && userList[i].pwd == pwd) {
+            cout << "登录成功！欢迎 " << userList[i].name << endl;
+            return i;
+        }
+        else if (managerList[i].id == id && managerList[i].pwd == pwd) {
+            cout << "登录成功！欢迎 " << managerList[i].name << endl;
+            return i;
+        }
+    }
+    cout << "账号或密码错误\n";
+    return -1;
+}
+
+void showMenu() {
+    cout << "\n====食堂菜单====\n";
+    cout << "ID    菜名        价格    库存\n";
+    for (int i = 0; i < dishNum; i++) {
+        cout << dishList[i].id << "    "
+            << dishList[i].name << "    "
+            << dishList[i].price << "    "
+            << dishList[i].stock << endl;
+    }
+}
+void studentRecharge() {
+    double money;
+    cout << "当前余额：" << userList[loginUser].money << endl;
+    cout << "输入充值金额：";
+    cin >> money;
+    if (money > 0) {
+        userList[loginUser].money += money;
+        cout << "充值成功，新余额：" << userList[loginUser].money << endl;
+    }
+    else {
+        cout << "金额不能为负数\n";
+    }
+}
+void studentOrder() {
+    showMenu();
+
+    Order newOrd;
+    newOrd.orderId = "ORD" + to_string(1000 + orderNum);
+    newOrd.userId = userList[loginUser].id;
+    newOrd.itemCnt = 0;
+    newOrd.total = 0;
+    newOrd.status = 0;
+
+    int dishId, num;
+    while (true) {
+        cout << "\n输入菜品ID下单，输入0结束选菜：";
+        cin >> dishId;
+        if (dishId == 0) break;
+
+     
+        int findIdx = -1;
+        for (int i = 0; i < dishNum; i++) {
+            if (dishList[i].id == dishId) {
+                findIdx = i;
+                break;
+            }
+        }
+        if (findIdx == -1) {
+            cout << "没有这个菜品！\n";
+            continue;
+        }
+
+        cout << "购买几份：";
+        cin >> num;
+        if (num <= 0 || num > dishList[findIdx].stock) {
+            cout << "数量非法或库存不足\n";
+            continue;
+        }
+
+    
+        newOrd.list[newOrd.itemCnt].dishId = dishId;
+        newOrd.list[newOrd.itemCnt].num = num;
+        newOrd.itemCnt++;
+        newOrd.total += dishList[findIdx].price * num;
+        cout << "已加入购物车\n";
+    }
+
+    if (newOrd.itemCnt == 0) {
+        cout << "未选任何菜品，订单取消\n";
+        return;
+    }
+
+  
+    cout << "\n订单总价：" << newOrd.total << endl;
+    cout << "你的余额：" << userList[loginUser].money << endl;
+    if (userList[loginUser].money >= newOrd.total) {
+       
+        userList[loginUser].money -= newOrd.total;
+        for (int i = 0; i < newOrd.itemCnt; i++) {
+            int dId = newOrd.list[i].dishId;
+            int cnt = newOrd.list[i].num;
+            for (int j = 0; j < dishNum; j++) {
+                if (dishList[j].id == dId) {
+                    dishList[j].stock -= cnt;
+                }
+            }
+        }
+        newOrd.status = 1;
+        orderList[orderNum++] = newOrd;
+        cout << "支付成功！订单号：" << newOrd.orderId << "，去窗口取餐\n";
+    }
+    else {
+        cout << "余额不足，下单失败\n";
+    }
+}
+
+void staffPick() {
+    string oid;
+    cout << "输入订单号：";
+    cin >> oid;
+    for (int i = 0; i < orderNum; i++) {
+        if (orderList[i].orderId == oid) {
+            if (orderList[i].status == 1) {
+                orderList[i].status = 2;
+                cout << "核销完成，已取餐\n";
+            }
+            else if (orderList[i].status == 2) {
+                cout << "该订单已经取过餐了\n";
+            }
+            else {
+                cout << "订单未支付，无法取餐\n";
+            }
+            return;
+        }
+    }
+    cout << "找不到该订单\n";
+}
+
+void showTotal() {
+    double sum = 0;
+    for (int i = 0; i < orderNum; i++) {
+        
+        if (orderList[i].status == 1 || orderList[i].status == 2) {
+            sum += orderList[i].total;
+        }
+    }
+    cout << "\n全部已支付订单总营收：" << sum << " 元\n";
+}
+
+void addUser() {
+    int select;
+	cout << "选择创建账号类型：0 学生 1 员工 其他退出\n";
+    while (true) {
+        cin >> select;
+        if (select == 0) {
+            if (userNum >= MAX_USER) {
+                cout << "用户数量已达上限\n";
+                return;
+            }
+            string id, name, pwd, major, birth, number;
+            int grade, money;
+           
+            
+            cout << "账号：";cin >> id;
+            for (int i = 0; i < userNum; i++) {
+                if (userList[i].id == id) {
+                    cout << "账号已存在\n";
+                    return;
+                }
+            }
+            cout << "姓名："; cin >> name;
+            cout << "密码："; cin >> pwd;
+            cout << "年级：";cin >> grade;
+            cout << "专业：";cin >> major;
+            cout << "生日（例如:2000-01-01）：";cin >> birth;
+            cout << "手机号：";cin >> number;
+            userList[userNum++] = { id, name, pwd, grade,major,birth,number, 0 };
+            cout << "账号创建成功\n";
+            break;
+        }
+        if (select == 1) {
+            if (managerNum >= MAX_USER) {
+                cout << "用户数量已达上限\n";
+                return;
+            }
+            string id, name, pwd;
+            int role;
+        
+            cout << "账号：";cin >> id;
+            for (int i = 0; i < managerNum; i++) {
+                if (managerList[i].id == id) {
+                    cout << "账号已存在\n";
+                    return;
+                }
+            }
+            cout << "姓名："; cin >> name;
+            cout << "密码："; cin >> pwd;
+            managerList[managerNum++] = { id, name, pwd };
+            cout << "账号创建成功\n";
+            break;
+        }
+		if (select != 0 && select != 1) {
+            cout << "退出创建账号\n";
+            break;
+        }
+    }
+}void addDish() {
+    if (dishNum >= MAX_DISH) {
+        cout << "菜品数量已达上限\n";
+        return;
+    }
+    int id, stock;
+    string name;
+    double price;
+    cout << "菜品ID："; cin >> id;
+   
+    for (int i = 0; i < dishNum; i++) {
+        if (dishList[i].id == id) {
+            cout << "菜品ID已存在\n";
+            return;
+        }
+    }
+    cout << "菜名："; cin >> name;
+    cout << "价格："; cin >> price;
+    cout << "库存："; cin >> stock;
+    dishList[dishNum++] = { id, name, price, stock };
+    cout << "菜品创建成功\n";
+}
+int main() {
+    
+    initData();
+    cout << "===== 简易食堂点餐系统 =====\n";
+
+    
+    loginUser = login();
+    if (loginUser == -1) {
+        cout << "登录失败，退出程序\n";
+        return 0;
+    }
+
+   
+    int op;
+    while (true) {
+        cout << "\n====功能菜单====\n";
+        cout << "1 查看菜单\n";
+        cout << "2 学生点餐\n";
+        cout << "3 校园卡充值\n";
+        cout << "4 员工核销取餐\n";
+        cout << "5 营收统计\n";
+        cout << "6 管理员新增账号\n";
+        cout << "7 管理员新增菜品\n";
+        cout << "0 退出\n";
+        cout << "请输入功能：";
+        cin >> op;
+        switch (op) {
+        case 1:
+            showMenu();
+            break;
+        case 2:
+            studentOrder();
+            break;
+        case 3:
+            studentRecharge();
+            break;
+        case 4:
+            staffPick();
+            break;
+        case 5:
+            showTotal();
+            break;
+        case 6:
+            addUser();
+            break;
+        case 7:
+            addDish();
+			break;
+        case 0:
+            cout << "退出系统\n";
+			return 0;
+        default: cout << "输入错误！\n";
+        }
+    }
+    cout << "程序结束\n";
+    return 0;
+}
